@@ -2,7 +2,7 @@
 export const config = { runtime: "edge" };
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const OPENAI_MODEL   = process.env.OPENAI_MODEL || "gpt-5-mini";
+const OPENAI_MODEL   = process.env.OPENAI_MODEL || "gpt-5";
 
 export default async function handler(req) {
   try {
@@ -37,6 +37,7 @@ export default async function handler(req) {
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
+    
         messages: [
           { role: "system", content: "You are a concise Japanese copywriter for satire." },
           prompt
