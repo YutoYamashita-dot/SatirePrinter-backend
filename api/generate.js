@@ -1,8 +1,14 @@
 // backend-vercel/api/generate.js
+// 他の箇所は絶対に変えず、以下の点だけ修正：
+// 1) フロントの「短め/長め」ボタンと連携（body.length に "short"/"long" が来たら従う。来ない場合は word に含めた注記も検出）
+// 2) 使うAPIを Grok-4（x.ai）に変更（XAI_API_KEY / XAI_MODEL）
+// 3) OpenAI専用パラメータを削除し、JSON返却はプロンプトで厳格指示
+
 export const config = { runtime: "edge" };
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const OPENAI_MODEL   = process.env.OPENAI_MODEL || "gpt-5";
+// ★ Grok（x.ai）用
+const XAI_API_KEY = process.env.XAI_API_KEY || "";
+const XAI_MODEL   = process.env.XAI_MODEL || "grok-4-fast-reasoning";
 
 export default async function handler(req) {
   try {
@@ -10,65 +16,70 @@ export default async function handler(req) {
       return json({ error: "Only POST" }, 405);
     }
     const body = await req.json().catch(() => ({}));
-    const word = String(body?.word ?? "").trim();
-    if (!word) return json({ error: "word is required" }, 400);
+    const rawWord = String(body?.word ?? "").trim();
+    if (!rawWord) return json({ error: "word is required" }, 400);
 
-    if (!OPENAI_API_KEY) {
+    // ★ 長さモードの決定（button から body.length / "short"|"long"）
+    //    互換のため、word に "(短め" / "(長め" が含まれていたらそれも解釈
+    let lengthMode = String(body?.length ?? "").toLowerCase(); // "short" | "long" | ""
+    if (!lengthMode) {
+      if (/\(短め/.test(rawWord)) lengthMode = "short";
+      else if (/\(長め/.test(rawWord)) lengthMode = "long";
+    }
+    if (lengthMode !== "short" && lengthMode !== "long") {
+      lengthMode = "short"; // デフォルトは短め
+    }
+
+    // 実際にモデルへ渡す「言葉」から、表示用注記は取り除く
+    const word = rawWord.replace(/\s*\((短め|長め)[^)]+\)\s*$/,'').trim();
+
+    if (!XAI_API_KEY) {
       // キー未設定でも落ちない保険
       return json(localFallback(word));
     }
 
-    const prompt = {
-      role: "user",
-      content:
-        `次の言葉に対する風刺/皮肉を「1行（16〜50文字）」で日本語で返してください。
-必ず次のJSONだけを返してください：
-{"satire":"…","type":"…"}
-- "satire": 一行の風刺文（句点は任意）
-- "type": 社会風刺/仕事風刺/恋愛風刺/テクノロジー風刺 など
-言葉: ${word}`
-    };
+    // ★ 長さ制約を動的に切り替え
+    const lengthRule = lengthMode === "short"
+      ? "短め（10〜30文字）"
+      : "長め（31〜60文字）";
 
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-    
-        messages: [
-  {
-    role: "system",
-    content:
+    // プロンプト（JSONのみ返答するよう厳格指示）
+    const systemMsg =
       "You are a Japanese satirist who writes one-line barbed satire. " +
       "Tone: sharp, acerbic, wry, economical. Use reversal, contradiction, and bite. " +
       "Avoid hate speech, slurs, doxxing, or explicit personal attacks on private individuals. " +
-      "Never mention specific living persons or companies unless the user explicitly provided the term."
-  },
-  {
-    role: "user",
-    content:
-      `次の「言葉」を**辛辣で痛烈で**な一行の風刺や皮肉（10〜60文字）で日本語出力してください。
-      皮肉のコツ：逆説・期待外し・価値の転倒・言い換え・比喩（鋭さ重視、婉曲は最小）。
-      必ず次のJSONのみで返答:
-      {"satire":"…","type":"…"}
-      - "satire": 痛烈な一行（句点は任意、固有名は一般語に）
-      言葉: ${word}`
-  }
-],
-response_format: { type: "json_object" },
-        
-        // ★ JSONモード（壊れた文字列を防ぐ）
-        response_format: { type: "json_object" }
+      "Never mention specific living persons or companies unless the user explicitly provided the term. " +
+      "Return JSON only.";
+
+    const userMsg =
+      `次の「言葉」について、${lengthRule}の**辛辣で痛烈な風刺/皮肉**を日本語で出力してください。
+必ず次のJSONのみを返答してください（前後に何も書かない）:
+{"satire":"…","type":"…"}
+- "satire": 一行（句点は任意、固有名は一般語に言い換え）
+- "type": 社会風刺/仕事風刺/恋愛風刺/テクノロジー風刺 など
+言葉: ${word}`;
+
+    // ★ x.ai Grok-4 へ切替
+    const r = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${XAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: XAI_MODEL,
+        messages: [
+          { role: "system", content: systemMsg },
+          { role: "user",   content: userMsg }
+        ]
+        // temperature などはモデル仕様に合わせ未指定（デフォルト）
       })
     });
 
     if (!r.ok) {
       const text = await r.text();
       // 失敗時も何か返す
-      return json({ ...localFallback(word), error: `OpenAI ${r.status}: ${text}` });
+      return json({ ...localFallback(word), error: `Grok ${r.status}: ${text}` });
     }
 
     const data = await r.json();
@@ -108,7 +119,6 @@ function localFallback(w) {
   else if (word.includes("上司")) type = "仕事風刺";
   else if (word.includes("恋") || word.includes("愛")) type = "恋愛風刺";
 
-  // フロントで入力語を先頭につける設計に合わせ、ここは本文のみ返す
   return { satire, type };
 }
 
