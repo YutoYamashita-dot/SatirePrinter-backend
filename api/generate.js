@@ -1,6 +1,5 @@
-// Vercel Serverless Function (Node.js ESM)
+// api/generate.js
 export const config = { runtime: "edge" };
-// ↑ レイテンシ重視なら edge。Node.js runtime を使うなら { runtime: "nodejs" }
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL   = process.env.OPENAI_MODEL || "gpt-5-mini";
@@ -10,7 +9,7 @@ async function callOpenAI(word) {
 出力は以下のJSONで返してください：
 {"satire":"…","type":"…"}
 - "satire": 18〜50文字目安の短文
-- "type": 文脈に合うカテゴリ名（例：社会風刺/仕事風刺/恋愛風刺/テクノロジー風刺 など）
+- "type": 文脈に合うカテゴリ名（社会風刺/恋愛風刺/テクノロジー風刺など）
 言葉: ${word}`;
 
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -29,12 +28,10 @@ async function callOpenAI(word) {
     })
   });
 
-  if (!r.ok) {
-    const text = await r.text();
-    throw new Error(`OpenAI error: ${r.status} ${text}`);
-  }
+  if (!r.ok) throw new Error(`OpenAI error: ${r.status}`);
   const data = await r.json();
   const content = data?.choices?.[0]?.message?.content?.trim();
+
   try {
     const parsed = JSON.parse(content);
     return {
@@ -42,7 +39,6 @@ async function callOpenAI(word) {
       type: String(parsed.type || "社会風刺").trim()
     };
   } catch {
-    // モデルがJSON以外を返したときの保険
     return {
       satire: content?.replace(/^["{]+|["}]+$/g, "") || `${word}：期待と現実の隙間に咲くため息。`,
       type: "社会風刺"
@@ -62,7 +58,6 @@ export default async function handler(req) {
     }
 
     if (!OPENAI_API_KEY) {
-      // APIキー未設定でもアプリが動くようにフォールバック
       const fallback = localFallback(word);
       return new Response(JSON.stringify(fallback), { status: 200 });
     }
@@ -73,12 +68,8 @@ export default async function handler(req) {
       headers: { "Content-Type": "application/json" }
     });
   } catch (e) {
-    // サーバ側でもフォールバック
-    const word = (() => {
-      try { return String((await req.json())?.word || ""); }
-      catch { return ""; }
-    })();
-    const fallback = localFallback(word);
+    // await を使わず安全にフォールバック
+    const fallback = localFallback("");
     return new Response(JSON.stringify({ ...fallback, error: String(e?.message || e) }), { status: 200 });
   }
 }
