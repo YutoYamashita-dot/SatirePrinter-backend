@@ -41,7 +41,7 @@ export default async function handler(req) {
           { role: "system", content: "You are a concise Japanese copywriter for satire." },
           prompt
         ],
-        temperature: 0.8,
+        
         // ★ JSONモード（壊れた文字列を防ぐ）
         response_format: { type: "json_object" }
       })
