@@ -39,9 +39,27 @@ export default async function handler(req) {
         model: OPENAI_MODEL,
     
         messages: [
-          { role: "system", content: "You are a concise Japanese copywriter for satire." },
-          prompt
-        ],
+  {
+    role: "system",
+    content:
+      "You are a Japanese satirist who writes one-line barbed satire. " +
+      "Tone: sharp, acerbic, wry, economical. Use reversal, contradiction, and bite. " +
+      "Avoid hate speech, slurs, doxxing, or explicit personal attacks on private individuals. " +
+      "Never mention specific living persons or companies unless the user explicitly provided the term."
+  },
+  {
+    role: "user",
+    content:
+      `次の「言葉」を**辛辣で痛烈で本質的**な一行の風刺や皮肉（18〜50文字）で日本語出力してください。
+      皮肉のコツ：逆説・期待外し・価値の転倒・言い換え・比喩（鋭さ重視、婉曲は最小）。
+      必ず次のJSONのみで返答:
+      {"satire":"…","type":"…"}
+      - "satire": 痛烈な一行（句点は任意、固有名は一般語に）
+      - "type": 社会風刺/仕事風刺/恋愛風刺/テクノロジー風刺 等
+      言葉: ${word}`
+  }
+],
+response_format: { type: "json_object" },
         
         // ★ JSONモード（壊れた文字列を防ぐ）
         response_format: { type: "json_object" }
