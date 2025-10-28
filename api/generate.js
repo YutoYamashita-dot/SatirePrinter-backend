@@ -3,12 +3,13 @@
 // ① アプリ指定の言語で必ず出力されるように、リクエストの言語タグを解釈してプロンプトに厳命
 // ② フォールバック(localFallback) も同じ言語で返すように拡張
 // ③ 出力文章は“必ず書き言葉（文語体・断定調）”になるよう指示文を強化
+// ④ モデルAPIを GPT-4o mini（OpenAI）に変更
 
 export const config = { runtime: "edge" };
 
-// ★ Grok（x.ai）用
-const XAI_API_KEY = process.env.XAI_API_KEY || "";
-const XAI_MODEL   = process.env.XAI_MODEL || "grok-4-fast-reasoning";
+// ★ OpenAI（GPT-4o mini）用
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_MODEL   = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 export default async function handler(req) {
   try {
@@ -51,11 +52,11 @@ export default async function handler(req) {
 
     // 実際にモデルへ渡す「言葉」から、表示用注記は取り除く（長さ・画面タグの痕跡も除去）
     const word = rawWord
-      .replace(/\s*\((短め|長め)[^)]*\)\s*$/,'')
+      .replace(/\s*\((短め|長め)[^)]*\)\s*$/, '')
       .replace(/[[(（]\s*(プリンター|スマイル|printer|smile)\s*[]）)]/ig, '')
       .trim();
 
-    if (!XAI_API_KEY) {
+    if (!OPENAI_API_KEY) {
       return json(localFallback(word, lengthMode, styleMode, langTag));
     }
 
@@ -65,7 +66,7 @@ export default async function handler(req) {
       : "長め（30〜70文字）";
 
     // === スタイル定義（断定調に統一） ===
-    // ★ 修正：必ず書き言葉（文語体・断定調）で、会話口調・相づち・感嘆語を禁止
+    // ★ 必ず書き言葉（文語体・断定調）で、会話口調・相づち・感嘆語を禁止
     const styleLine =
       "スタイル＝文語体・書き言葉（断定調）。口語・会話調・独白・相づち・感嘆語・擬音は禁止。文末は「だ／である」調。";
 
@@ -87,15 +88,15 @@ ${styleLine}
 - "type": 社会風刺/仕事風刺/恋愛風刺/テクノロジー風刺 など1語
 言葉: ${word}`;
 
-    // ★ x.ai Grok-4 へ
-    const r = await fetch("https://api.x.ai/v1/chat/completions", {
+    // ★ OpenAI GPT-4o mini へ
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${XAI_API_KEY}`
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: XAI_MODEL,
+        model: OPENAI_MODEL,
         messages: [
           { role: "system", content: systemMsg },
           { role: "user",   content: userMsg }
@@ -105,7 +106,7 @@ ${styleLine}
 
     if (!r.ok) {
       const text = await r.text();
-      return json({ ...localFallback(word, lengthMode, styleMode, langTag), error: `Grok ${r.status}: ${text}` });
+      return json({ ...localFallback(word, lengthMode, styleMode, langTag), error: `OpenAI ${r.status}: ${text}` });
     }
 
     const data = await r.json();
@@ -400,7 +401,7 @@ function templates(langTag, w) {
         `${w} वादों को फुलाता है और सार को पतला करता है।`,
         `${w} सस्ती तसल्ली है जो जिम्मेदारी धुंधली करती है।`,
         `${w} निर्णय टालता है और लागत बढ़ाता है।`,
-        `${w} आशा की पोशाक पहनाया गया अंतिम समय है।`
+        `${w} आशा की पोशाक पहनाया गया अंतिम時間です。`
       ],
       short: [
         `${w} बहाना है।`,
