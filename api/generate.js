@@ -43,8 +43,8 @@ export default async function handler(req) {
     // ★ 長さ制約（日本語の“文字数”目安）
     //   呟きの間（…）を含めた自然な一息の長さになるよう幅を持たせる
     const lengthRule = lengthMode === "short"
-      ? "短め（25〜60文字）"
-      : "長め（80〜140文字）";
+      ? "短め（14〜30文字）"
+      : "長め（30〜70文字）";
 
     // プロンプト（JSONのみ返答するよう厳格指示）
     const systemMsg =
