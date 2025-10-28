@@ -220,7 +220,7 @@ function localFallback(w, lengthMode = "long", styleMode = "auto", langTag = "ja
 
   // 言語別の簡潔な断定文テンプレ（書き言葉・断定調）
   const T = templates(langTag, word);
- a  const arr = long ? T.long : T.short;
+  const arr = long ? T.long : T.short;
   const satire = arr[Math.floor(Math.random() * arr.length)];
 
   let type = languageTypeDefault(langTag);
