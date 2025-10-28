@@ -182,7 +182,7 @@ function normalizeLangTag(tag) {
   // 一般的な略記の正規化
   if (/^zh(?:-(?:Hans|CN))?$/i.test(t)) return "zh-rCN";
   if (/^zh-(?:Hant|TW|HK)$/i.test(t))   return "zh-rTW";
-  return "ja";
+  return "en";
 }
 
 function languageName(langTag) {
@@ -206,7 +206,8 @@ function languageName(langTag) {
     case "te": return "తెలుగు";
     case "ta": return "தமிழ்";
     case "vi": return "Tiếng Việt";
-    default: return "日本語";
+    case "ja": return "日本語";
+    default: return "English";
   }
 }
 
@@ -237,7 +238,8 @@ function languageTypeDefault(langTag) {
     case "te": return "సామాజిక వ్యంగ్యం";
     case "ta": return "சமூக கிண்டல்";
     case "vi": return "Châm biếm xã hội";
-    default: return "社会風刺";
+    case "ja": return "社会風刺";
+    default: return "Social satire";
   }
 }
 
@@ -283,7 +285,8 @@ function pickWord(langTag) {
     case "te": return "అది";
     case "ta": return "அது";
     case "vi": return "điều đó";
-    default: return "それ";
+    case "ja": return "それ";
+    default: return "it";
   }
 }
 
@@ -584,19 +587,33 @@ function templates(langTag, w) {
         `${w} làm loãng trách nhiệm.`
       ]
     };
+    case "ja": return {
+      long: [
+        `${w} 約束を膨らませて中身を痩せさせる。`,
+        `${w} 責任の所在を曖昧にする安易な方便である。`,
+        `${w} を唱えるほど決断は遅れ、費用だけが積み上がる。`,
+        `${w} は希望の衣をまとった締切である。`
+      ],
+      short: [
+        `${w} それは単なる口実である。`,
+        `${w} それは齟齬を露わにする。`,
+        `${w} それは記章に過ぎない。`,
+        `${w} それは責任を希釈する。`
+      ]
+    };
     default:
       return {
         long: [
-          `${w}は約束を膨らませて中身を痩せさせる。`,
-          `${w}は責任の所在を曖昧にする安易な方便である。`,
-          `${w}を唱えるほど決断は遅れ、費用だけが積み上がる。`,
-          `${w}は希望の衣をまとった締切である。`
+         `${w} inflates promises while starving substance.`,
+         `${w} is a substitute for certainty that obscures accountability.`,
+         `${w} delays decisions while costs accumulate.`,
+         `${w} is a deadline disguised as hope.`
         ],
         short: [
-          `${w}は単なる口実である。`,
-          `${w}は齟齬を露わにする。`,
-          `${w}は記章に過ぎない。`,
-          `${w}は責任を希釈する。`
+          `${w} is an excuse.`,
+          `${w} exposes the gap.`,
+          `${w} is merely a badge.`,
+          `${w} thins responsibility.`
         ]
       };
   }
