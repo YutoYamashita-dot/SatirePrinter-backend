@@ -64,13 +64,12 @@ export default async function handler(req) {
       : "長め（30〜70文字）";
 
     // === スタイル定義（長さと独立） ===
-    // - プリンター（断定調）：一人称や曖昧表現を避け、断定形で言い切る。三点リーダ「…」禁止。末尾は「。」で締める。
+    // ★ 要求に合わせて「プリンターもスマイルも断定調」に統一
+    // - 両スタイル共通：一人称や曖昧表現を避け、断定形で言い切る。三点リーダ「…」禁止。末尾は「。」で締める。
     //   禁止：『…』『？』『！』『かも』『かな』『気がする』『でしょう』『と思う』などの曖昧表現／疑問形。
     //   望ましい終止形例：〜である。〜だ。〜に過ぎない。〜ではない。〜に尽きる。
-    // - スマイル（呟き調）：ささやく独白調。必要に応じて「…」「かな」「かも」などの余韻表現を用いる。比喩や反転を1つ以上。
-    const styleLine = (styleMode === "printer")
-      ? "スタイル＝Printer（断定調）。一人称や曖昧表現を避け、三点リーダ「…」や疑問符・感嘆符は使わず、必ず断定で「。」で締める（例：〜である。〜だ。〜ではない。〜に過ぎない。）。「かも」「かな」「気がする」「でしょう」「と思う」等は禁止。"
-      : "スタイル＝Smile（呟き調）。ささやく独白調で「…」「かな」「かも」等を適度に用い、比喩や反転を1つ以上入れる。";
+    const styleLine =
+      "スタイル＝断定調。三点リーダ「…」や疑問符・感嘆符は使わず、必ず断定で「。」で締める（例：〜である。〜だ。〜ではない。〜に過ぎない。）。「かも」「かな」「気がする」「でしょう」「と思う」等は禁止。";
 
     // プロンプト（JSONのみ返答するよう厳格指示）
     const systemMsg =
@@ -80,7 +79,7 @@ export default async function handler(req) {
       "Return JSON only.";
 
     const userMsg =
-`次の「言葉」について、${lengthRule}の**鋭い風刺/皮肉**を日本語で作成してください。
+`次の「言葉」について、${lengthRule}の**鋭く辛辣な風刺/皮肉**を日本語で作成してください。
 ${styleLine}
 追加要件:
 - 固有名は一般語に言い換え（必要なときのみ）
@@ -136,32 +135,27 @@ ${styleLine}
   }
 }
 
-// ローカルフォールバック：
-// styleMode に従って文体を決め、lengthMode は長さの目安としてのみ利用
-// - printer（断定調）→ 断定文。三点リーダ禁止。末尾「。」
-// - smile（呟き調） → 囁きの独白調。三点リーダ許可。
+// ローカルフォールバック：断定調に統一（スマイルも断定文）
 function localFallback(w, lengthMode = "long", styleMode = "auto") {
   const word = String(w || "").trim() || "それ";
-  let style = styleMode;
-  if (style === "auto") style = (lengthMode === "short") ? "printer" : "smile";
 
-  // スマイル（呟き調）
-  const poolSmile = [
-    `${word}って…便利な魔法みたいに貼られるけど、貼った指先だけが空っぽになるんだよね。`,
-    `みんな${word}を欲しがるけど…欲しいのは安心の代用品で、領収書はいらないって顔。`,
-    `${word}さえあれば…って呟く時ほど、他の歯車が欠けてて、音をごまかすために声を大きくする…たぶん。`,
-    `${word}は希望のふりをした締め切りで、伸ばすほど約束の形だけが増える…ね。`
+  // 断定調サンプル（句点で締め、曖昧表現と三点リーダを使わない）
+  const poolLong = [
+    `${word}は期待だけを膨らませて中身を痩せさせる。`,
+    `${word}は安心の代用品に過ぎず、責任の所在をぼかす。`,
+    `${word}を唱えるほど決断は遅れ、費用だけが積み上がる。`,
+    `${word}は希望の衣を着た締切であり、猶予を装う義務だ。`
   ];
-  // プリンター（断定調）
-  const poolPrinter = [
-    `${word}は期待と責任の落差を露呈する。`,
-    `${word}は都合の良い免罪符に過ぎない。`,
-    `${word}が不足しているのではなく決断が不足している。`,
-    `${word}は現実逃避を正当化する飾りだ。`
+  const poolShort = [
+    `${word}は現実逃避の飾りだ。`,
+    `${word}は免罪符に過ぎない。`,
+    `${word}が足りないのではなく決断が足りない。`,
+    `${word}は責任の所在を溶かす。`
   ];
 
-  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  const satire = style === "printer" ? pick(poolPrinter) : pick(poolSmile);
+  const long = lengthMode === "long";
+  const arr = long ? poolLong : poolShort;
+  const satire = arr[Math.floor(Math.random() * arr.length)];
 
   let type = "社会風刺";
   const lower = word.toLowerCase();
