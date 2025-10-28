@@ -4,12 +4,34 @@
 // ② フォールバック(localFallback) も同じ言語で返すように拡張
 // ③ 出力文章は“必ず書き言葉（文語体・断定調）”になるよう指示文を強化
 // ④ モデルAPIを XAI（Grok）に接続
+// ⑤ 追加：東京エッジ固定＆上流18秒タイムアウトで 25s 制限内に必ず初期レスポンスを返す
 
-export const config = { runtime: "edge" };
+export const config = { runtime: "edge", regions: ["hnd1"] };
 
 // ★ XAI（Grok）用
 const XAI_API_KEY = process.env.XAI_API_KEY || "";
 const XAI_MODEL   = process.env.XAI_MODEL || "grok-4-fast-reasoning";
+
+// ★ 追加：上流保険タイムアウト（18s）
+const UPSTREAM_TIMEOUT_MS = 18_000;
+async function callModelWithTimeout(reqBody, url, headers) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(new Error("upstream timeout")), UPSTREAM_TIMEOUT_MS);
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(reqBody),
+      signal: ac.signal,
+      cache: "no-store",
+    });
+    clearTimeout(timer);
+    return r;
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
 
 export default async function handler(req) {
   try {
@@ -22,7 +44,7 @@ export default async function handler(req) {
 
     // === 追加: アプリ指定の言語（言語タグ）を解釈 ===
     // 受け取り先候補: body.lang / body.language / body.locale
-    // 例: "ja", "en", "zh-Hans", "zh-Hant", "es", ...
+    // 例: "ja", "en", "zh-rCN", "zh-rTW", "es", ...
     const rawLang = String(body?.lang ?? body?.language ?? body?.mode ?? body?.screen ?? body?.locale ?? "").trim();
     const langTag = normalizeLangTag(rawLang || "ja"); // デフォルト: 日本語
     const langLine = languageStrictLine(langTag);      // 「この言語で必ず出力」の厳命文
@@ -93,21 +115,29 @@ ${styleLine}
 - "type": 社会風刺/仕事風刺/恋愛風刺/テクノロジー風刺 など1語
 言葉: ${word}`;
 
-    // ★ XAI Grok へ
-    const r = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${XAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: XAI_MODEL,
-        messages: [
-          { role: "system", content: systemMsg },
-          { role: "user",   content: userMsg }
-        ]
-      })
-    });
+    // ★ XAI Grok へ —— 18秒の保険タイムアウトを付与
+    let r;
+    try {
+      r = await callModelWithTimeout(
+        {
+          model: XAI_MODEL,
+          messages: [
+            { role: "system", content: systemMsg },
+            { role: "user",   content: userMsg }
+          ],
+          // （オプション）初期応答を早めたい場合は max_output_tokens を控えめに
+          // max_output_tokens: 140
+        },
+        "https://api.x.ai/v1/chat/completions",
+        {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${XAI_API_KEY}`
+        }
+      );
+    } catch (e) {
+      // タイムアウトやネットワーク障害は即フォールバック
+      return json({ ...localFallback(word, lengthMode, styleMode, langTag), error: String(e?.message || e) });
+    }
 
     if (!r.ok) {
       const text = await r.text();
@@ -145,21 +175,21 @@ function normalizeLangTag(tag) {
   const t = String(tag || "").replace('_','-').trim();
   // 既知タグのみそのまま。未指定は ja
   const known = new Set([
-    "ja","en","zh-Hans","zh-Hant","es","fr","pt","de","ko",
+    "ja","en","zh-rCN","zh-rTW","es","fr","pt","de","ko",
     "hi","id","tr","ru","bn","sw","mr","te","ta","vi"
   ]);
   if (known.has(t)) return t;
   // 一般的な略記の正規化
-  if (/^zh(?:-(?:Hans|CN))?$/i.test(t)) return "zh-Hans";
-  if (/^zh-(?:Hant|TW|HK)$/i.test(t))   return "zh-Hant";
+  if (/^zh(?:-(?:Hans|CN))?$/i.test(t)) return "zh-rCN";
+  if (/^zh-(?:Hant|TW|HK)$/i.test(t))   return "zh-rTW";
   return "ja";
 }
 
 function languageName(langTag) {
   switch (langTag) {
     case "en": return "English";
-    case "zh-Hans": return "简体中文";
-    case "zh-Hant": return "繁體中文";
+    case "zh-rCN": return "简体中文";
+    case "zh-rTW": return "繁體中文";
     case "es": return "Español";
     case "fr": return "Français";
     case "pt": return "Português";
@@ -189,8 +219,8 @@ function languageStrictLine(langTag) {
 function languageTypeDefault(langTag) {
   switch (langTag) {
     case "en": return "Social satire";
-    case "zh-Hans": return "社会讽刺";
-    case "zh-Hant": return "社會諷刺";
+    case "zh-rCN": return "社会讽刺";
+    case "zh-rTW": return "社會諷刺";
     case "es": return "Sátira social";
     case "fr": return "Satire sociale";
     case "pt": return "Sátira social";
@@ -235,8 +265,8 @@ function localFallback(w, lengthMode = "long", styleMode = "auto", langTag = "ja
 function pickWord(langTag) {
   switch (langTag) {
     case "en": return "it";
-    case "zh-Hans": return "它";
-    case "zh-Hant": return "它";
+    case "zh-rCN": return "它";
+    case "zh-rTW": return "它";
     case "es": return "eso";
     case "fr": return "cela";
     case "pt": return "isso";
@@ -282,7 +312,7 @@ function typeByLang(langTag, kind) {
     }
   };
   const key = kind === "tech" ? "tech" : kind === "work" ? "work" : "love";
-  const langKey = langTag === "zh-Hans" ? "zhHans" : langTag === "zh-Hant" ? "zhHant" : langTag;
+  const langKey = langTag === "zh-rCN" ? "zhHans" : langTag === "zh-rTW" ? "zhHant" : langTag;
   return (map[key][langKey] ?? languageTypeDefault(langTag));
 }
 
@@ -302,7 +332,7 @@ function templates(langTag, w) {
         `${w} thins responsibility.`
       ]
     };
-    case "zh-Hans": return {
+    case "zh-rCN": return {
       long: [
         `${w}只会吹大承诺，稀释实质。`,
         `${w}不过是廉价安慰，顺带模糊责任。`,
@@ -316,7 +346,7 @@ function templates(langTag, w) {
         `${w}稀释了责任。`
       ]
     };
-    case "zh-Hant": return {
+    case "zh-rTW": return {
       long: [
         `${w}只會誇大承諾，掏空實質。`,
         `${w}不過是廉價的撫慰，還把責任弄得模糊。`,
@@ -500,7 +530,7 @@ function templates(langTag, w) {
     };
     case "mr": return {
       long: [
-        `${w} अपेक्षा फुगवते आणि आशय क्षीণ करते।`,
+        `${w} अपेक्षा फुगवते आणि आशय क्षीण करते।`,
         `${w} जबाबदारी धूसर करणारा स्वस्त दिलासा आहे।`,
         `${w} निर्णय विलंबित होतो आणि खर्च वाढतो।`,
         `${w} आशेच्या आवरणातील अंतिम मुदत आहे।`
