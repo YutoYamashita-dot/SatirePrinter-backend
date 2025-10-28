@@ -65,7 +65,7 @@ export default async function handler(req) {
 
     // === スタイル定義（断定調に統一） ===
     const styleLine =
-      "スタイル＝断定文章";
+      "スタイル＝文語の文章";
 
     // === プロンプト（言語厳守をsystemにも明記） ===
     const systemMsg =
@@ -75,7 +75,7 @@ export default async function handler(req) {
 
     const userMsg =
 `${langLine}
-次の「言葉」について、${lengthRule}の**鋭く辛辣な風刺/皮肉**を${langName}で作成してください。難しい言葉は使わず、書き言葉で出力すること。
+次の「言葉」について、${lengthRule}の**鋭く辛辣な風刺/皮肉**を${langName}で作成してください。難しい言葉は使わず、書き言葉で出力すること。喋り口調は絶対に禁止。
 ${styleLine}
 追加要件:
 - 固有名は一般語に言い換え（必要なときのみ）
