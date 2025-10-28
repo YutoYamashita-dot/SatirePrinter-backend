@@ -51,10 +51,10 @@ export default async function handler(req) {
     }
 
     // 実際にモデルへ渡す「言葉」から、表示用注記は取り除く（長さ・画面タグの痕跡も除去）
-    const word = rawWord
-      .replace(/\s*\((短め|長め)[^)]*\)\s*$/, '')
-      .replace(/[[(（]\s*(プリンター|スマイル|printer|smile)\s*[]）)]/ig, '')
-      .trim();
+  const word = rawWord
+  .replace(/\s*\((短め|長め)[^)]*\)\s*$/, "")
+  .replace(/[\[\(（]\s*(プリンター|スマイル|printer|smile)\s*[\]）)]/ig, "")
+  .trim();
 
     if (!OPENAI_API_KEY) {
       return json(localFallback(word, lengthMode, styleMode, langTag));
