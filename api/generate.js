@@ -75,13 +75,13 @@ export default async function handler(req) {
 
     const userMsg =
 `${langLine}
-次の「言葉」について、${lengthRule}の**鋭く辛辣な風刺/皮肉**を${langName}で作成してください。
+次の「言葉」について、${lengthRule}の**鋭く辛辣な風刺/皮肉**を${langName}で作成してください。難しい言葉は使わず、書き言葉で出力すること。
 ${styleLine}
 追加要件:
 - 固有名は一般語に言い換え（必要なときのみ）
 - 出力は**次のJSONのみ**（前後に何も書かない）
 {"satire":"…","type":"…"}
-- "satire": 一行（スタイルルールに従う）
+- "satire": 1行か2行（スタイルルールに従う）
 - "type": 社会風刺/仕事風刺/恋愛風刺/テクノロジー風刺 など1語
 言葉: ${word}`;
 
