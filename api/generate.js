@@ -65,14 +65,13 @@ export default async function handler(req) {
 
     // === スタイル定義（断定調に統一） ===
     const styleLine =
-      "スタイル＝断定調。三点リーダ「…」や疑問符・感嘆符は使わず、必ず断定で「。」で締める（例：〜である。〜だ。〜ではない。〜に過ぎない。）。「かも」「かな」「気がする」「でしょう」「と思う」等は禁止。";
+      "スタイル＝断定文章";
 
     // === プロンプト（言語厳守をsystemにも明記） ===
     const systemMsg =
       "You must always write the answer in the application-specified language. " +
       `LANG=${langTag}. ` +
-      "Return JSON only. Avoid hate speech, slurs, doxxing, or explicit personal attacks on private individuals. " +
-      "Never mention specific living persons or companies unless the user explicitly provided the term.";
+      "Return JSON only. Avoid hate speech, slurs, doxxing. " 
 
     const userMsg =
 `${langLine}
