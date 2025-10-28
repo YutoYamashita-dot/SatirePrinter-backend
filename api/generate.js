@@ -56,7 +56,7 @@ export default async function handler(req) {
 
     // 実際にモデルへ渡す「言葉」から、表示用注記は取り除く（長さ・画面タグの痕跡も除去）
     const word = rawWord
-      .replace(/\s*\((短め|長め)[^)]*\)\s*$/,"")
+      .replace(/\s*\((短め|長め)[^)]*\)\s*$/, "")
       // ▼ 正規表現の文字クラス終端の ] をエスケープ（構文エラー修正）
       .replace(/[\[\(（]\s*(プリンター|スマイル|printer|smile)\s*[\]\)\）]/ig, "")
       .trim();
@@ -263,7 +263,7 @@ function typeByLang(langTag, kind) {
       ja:"テクノロジー風刺", en:"Tech satire", zhHans:"科技讽刺", zhHant:"科技諷刺", es:"Sátira tecnológica",
       fr:"Satire technologique", pt:"Sátira tecnológica", de:"Technik-Satire", ko:"기술 풍자",
       hi:"टेक व्यंग्य", id:"Satir teknologi", tr:"Teknoloji hicvi", ru:"Технологическая сатира",
-      ar:"সخرية تقنية", bn:"প্রযুক্তি ব্যঙ্গ", sw:"Udhihaka wa teknolojia", mr:"तंत्रज्ञानावर उपहास",
+      ar:"سخرية تقنية", bn:"প্রযুক্তি ব্যঙ্গ", sw:"Udhihaka wa teknolojia", mr:"तंत्रज्ञानावर उपहास",
       te:"సాంకేతిక వ్యంగ్యం", ta:"தொழில்நுட்ப கிண்டல்", vi:"Châm biếm công nghệ"
     },
     work: {
@@ -277,7 +277,7 @@ function typeByLang(langTag, kind) {
       ja:"恋愛風刺", en:"Love satire", zhHans:"爱情讽刺", zhHant:"愛情諷刺", es:"Sátira amorosa",
       fr:"Satire amoureuse", pt:"Sátira de amor", de:"Liebes-Satire", ko:"연애 풍자",
       hi:"प्रेम व्यंग्य", id:"Satir cinta", tr:"Aşk hicvi", ru:"Сатира о любви",
-      ar:"سخرية الحب", bn:"ভালোবাসার ব্যঙ্গ", sw:"Udhaka wa mapenzi", mr:"प्रेमावर उपहাস",
+      ar:"سخرية الحب", bn:"ভালোবাসার ব্যঙ্গ", sw:"Udhihaka wa mapenzi", mr:"प्रेमावर उपहास",
       te:"ప్రేమ వ్యంగ్యం", ta:"காதல் கிண்டல்", vi:"Châm biếm tình yêu"
     }
   };
@@ -402,7 +402,7 @@ function templates(langTag, w) {
     };
     case "hi": return {
       long: [
-        `${w} वादे फुलवतो आणि आशय रिकामा करतो.`,
+        `${w} वादे फुलवतो आणि आशय रिकामा करतो।`,
         `${w} जबाबदारी धूसर करणारा स्वस्त दिलासा आहे।`,
         `${w} निर्णय लांबवतो आणि खर्च वाढवतो।`,
         `${w} आशेचे आवरण चढवलेली अंतिम मुदत आहे।`
@@ -563,10 +563,10 @@ function templates(langTag, w) {
           `${w}は希望の衣をまとった締切である。`
         ],
         short: [
-          `${word}は単なる口実である。`,
-          `${word}は齟齬を露わにする。`,
-          `${word}は記章に過ぎない。`,
-          `${word}は責任を希釈する。`
+          `${w}は単なる口実である。`,
+          `${w}は齟齬を露わにする。`,
+          `${w}は記章に過ぎない。`,
+          `${w}は責任を希釈する。`
         ]
       };
   }
