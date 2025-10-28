@@ -2,6 +2,7 @@
 // 他の箇所は絶対に変えず、以下の点だけ修正：
 // ① アプリ指定の言語で必ず出力されるように、リクエストの言語タグを解釈してプロンプトに厳命
 // ② フォールバック(localFallback) も同じ言語で返すように拡張
+// ③ 出力文章は“必ず書き言葉（文語体・断定調）”になるよう指示文を強化
 
 export const config = { runtime: "edge" };
 
@@ -50,7 +51,7 @@ export default async function handler(req) {
 
     // 実際にモデルへ渡す「言葉」から、表示用注記は取り除く（長さ・画面タグの痕跡も除去）
     const word = rawWord
-      .replace(/\s*\((短め|長め)[^)]+\)\s*$/,'')
+      .replace(/\s*\((短め|長め)[^)]*\)\s*$/,'')
       .replace(/[[(（]\s*(プリンター|スマイル|printer|smile)\s*[]）)]/ig, '')
       .trim();
 
@@ -64,18 +65,19 @@ export default async function handler(req) {
       : "長め（30〜70文字）";
 
     // === スタイル定義（断定調に統一） ===
+    // ★ 修正：必ず書き言葉（文語体・断定調）で、会話口調・相づち・感嘆語を禁止
     const styleLine =
-      "スタイル＝文語の文章";
+      "スタイル＝文語体・書き言葉（断定調）。口語・会話調・独白・相づち・感嘆語・擬音は禁止。文末は「だ／である」調。";
 
     // === プロンプト（言語厳守をsystemにも明記） ===
     const systemMsg =
       "You must always write the answer in the application-specified language. " +
       `LANG=${langTag}. ` +
-      "Return JSON only. Avoid hate speech, slurs, doxxing. " 
+      "Return JSON only. Avoid hate speech, slurs, doxxing. ";
 
     const userMsg =
 `${langLine}
-次の「言葉」について、${lengthRule}の**鋭く辛辣な風刺/皮肉**を${langName}で作成してください。難しい言葉は使わず、書き言葉で出力すること。喋り口調は絶対に禁止。
+次の「言葉」について、${lengthRule}の鋭く辛辣な風刺/皮肉を${langName}で作成すること。難しい言葉は避け、**必ず書き言葉（文語体・断定調）で出力すること**。喋り言葉・会話調・独白は禁止。
 ${styleLine}
 追加要件:
 - 固有名は一般語に言い換え（必要なときのみ）
@@ -127,6 +129,7 @@ ${styleLine}
     return json({ ...localFallback("", "long", "smile", "ja"), error: String(e?.message || e) }, 200);
   }
 }
+
 
 // ==============================
 // 追加: 言語関連の補助関数
@@ -210,7 +213,7 @@ function localFallback(w, lengthMode = "long", styleMode = "auto", langTag = "ja
   const word = String(w || "").trim() || pickWord(langTag);
   const long = lengthMode === "long";
 
-  // 言語別の簡潔な断定文テンプレ
+  // 言語別の簡潔な断定文テンプレ（書き言葉・断定調）
   const T = templates(langTag, word);
   const arr = long ? T.long : T.short;
   const satire = arr[Math.floor(Math.random() * arr.length)];
@@ -297,8 +300,8 @@ function templates(langTag, w) {
     case "zh-Hans": return {
       long: [
         `${w}只会吹大承诺、瘦身内容。`,
-        `${w}是廉价的安慰剂，顺便模糊责任。`,
-        `${w}让决定变慢，代价却在累计。`,
+        `${w}是廉价的安慰剂，并顺带模糊责任。`,
+        `${w}让决策变慢，而代价在累计。`,
         `${w}是披着希望外衣的最后期限。`
       ],
       short: [
@@ -311,8 +314,8 @@ function templates(langTag, w) {
     case "zh-Hant": return {
       long: [
         `${w}只會誇大承諾、掏空內容。`,
-        `${w}是廉價安慰劑，也順手模糊責任。`,
-        `${w}拖慢決策，成本卻持續累加。`,
+        `${w}是廉價的安慰劑，也順手模糊責任。`,
+        `${w}拖慢決策，而成本持續累加。`,
         `${w}是披著希望外衣的最後期限。`
       ],
       short: [
@@ -396,27 +399,27 @@ function templates(langTag, w) {
       long: [
         `${w} वादों को फुलाता है और सार को पतला करता है।`,
         `${w} सस्ती तसल्ली है जो जिम्मेदारी धुंधली करती है।`,
-        `${w} निर्णय टालता है, लागत बढ़ाता है।`,
-        `${w} आशा के वस्त्रों में अंतिम तिथि है।`
+        `${w} निर्णय टालता है और लागत बढ़ाता है।`,
+        `${w} आशा की पोशाक पहनाया गया अंतिम समय है।`
       ],
       short: [
         `${w} बहाना है।`,
         `${w} अंतर उजागर करता है।`,
-        `${w} केवल ठप्पा है।`,
-        `${w} जिम्मेदारी घोल देता है।`
+        `${w} केवल एक निशान है।`,
+        `${w} जिम्मेदारी को पतला करता है।`
       ]
     };
     case "id": return {
       long: [
         `${w} mengembungkan janji dan menguruskan isi.`,
-        `${w} penenang murah yang mengaburkan tanggung jawab.`,
+        `${w} adalah penenang murah yang mengaburkan tanggung jawab.`,
         `${w} menunda keputusan sementara biaya naik.`,
-        `${w} adalah tenggat yang menyamar jadi harapan.`
+        `${w} adalah tenggat yang menyamar menjadi harapan.`
       ],
       short: [
         `${w} hanyalah alasan.`,
         `${w} membuka jurang.`,
-        `${w} cuma lencana.`,
+        `${w} sekadar lencana.`,
         `${w} melarutkan tanggung jawab.`
       ]
     };
@@ -425,12 +428,12 @@ function templates(langTag, w) {
         `${w} vaatleri şişirir, içeriği zayıflatır.`,
         `${w} sorumluluğu bulanıklaştıran ucuz bir tesellidir.`,
         `${w} kararları geciktirir, maliyetleri büyütür.`,
-        `${w} umut kılığındaki son tarihtir.`
+        `${w} umut kılığına girmiş son tarihtir.`
       ],
       short: [
         `${w} bir mazerettir.`,
         `${w} uçurumu açığa çıkarır.`,
-        `${w} sadece bir rozet.`,
+        `${w} sadece bir rozettir.`,
         `${w} sorumluluğu seyreltir.`
       ]
     };
@@ -439,7 +442,7 @@ function templates(langTag, w) {
         `${w} раздувает обещания и истончает содержание.`,
         `${w} — дешёвое утешение, размывающее ответственность.`,
         `${w} тормозит решения, а затраты растут.`,
-        `${w} — дедлайн в костюме надежды.`
+        `${w} — дедлайн, замаскированный под надежду.`
       ],
       short: [
         `${w} — это отговорка.`,
@@ -451,9 +454,9 @@ function templates(langTag, w) {
     case "ar": return {
       long: [
         `${w} ينفخ الوعود ويُنهك المضمون.`,
-        `${w} مسكّن رخيص يطمس المسؤولية.`,
-        `${w} يؤخر القرار بينما تتراكم الكلفة.`,
-        `${w} موعد نهائي متنكر في هيئة أمل.`
+        `${w} مُسكِّن رخيص يطمس المسؤولية.`,
+        `${w} يؤخر القرار فيما تتراكم الكلفة.`,
+        `${w} موعد نهائي متخفٍ بثوب الأمل.`
       ],
       short: [
         `${w} ذريعة.`,
@@ -464,23 +467,23 @@ function templates(langTag, w) {
     };
     case "bn": return {
       long: [
-        `${w} প্রতিশ্রুতি ফুলিয়ে বিষয়বস্তু শুকিয়ে দেয়।`,
+        `${w} প্রতিশ্রুতি ফুলিয়ে দেয় এবং সারবস্তুকে পাতলা করে।`,
         `${w} দায় ঝাপসা করা সস্তা সান্ত্বনা।`,
         `${w} সিদ্ধান্ত বিলম্বিত করে, খরচ বাড়ায়।`,
-        `${w} আশা-পরা এক শেষ সময়সীমা।`
+        `${w} আশা-ঢাকা শেষ সময়সীমা।`
       ],
       short: [
-        `${w} অজুহাত।`,
+        `${w} শুধু অজুহাত।`,
         `${w} ফাঁক উন্মোচন করে।`,
-        `${w} কেবল এক ব্যাজ।`,
+        `${w} শুধু একটি ব্যাজ।`,
         `${w} দায় হালকা করে।`
       ]
     };
     case "sw": return {
       long: [
-        `${w} huvimbisha ahadi na kuonda kiini.`,
+        `${w} huvimbisha ahadi na kupunguza kiini.`,
         `${w} ni tulizo rahisi linaloficha uwajibikaji.`,
-        `${w} huchelewesha uamuzi huku gharama zikiongezeka.`,
+        `${w} huchelewesha maamuzi huku gharama zikiongezeka.`,
         `${w} ni tarehe ya mwisho iliyojifanya tumaini.`
       ],
       short: [
@@ -492,43 +495,43 @@ function templates(langTag, w) {
     };
     case "mr": return {
       long: [
-        `${w} वचनं फुगवते आणि सार कमी करते.`,
+        `${w} वचने फुगवते आणि सार क्षीण करते.`,
         `${w} जबाबदारी धूसर करणारा स्वस्त दिलासा आहे.`,
-        `${w} निर्णय उशिरा येतो, खर्च मात्र वाढतो.`,
-        `${w} आशेच्या वेशातली अंतिम मुदत आहे.`
+        `${w} निर्णय लांबवते आणि खर्च वाढवते.`,
+        `${w} आशेच्या वस्त्रातील अंतिम मुदत आहे.`
       ],
       short: [
-        `${w} हे कारण आहे.`,
+        `${w} एक कारण आहे.`,
         `${w} दरी उघड करते.`,
-        `${w} फक्त एक बॅज.`,
-        `${w} जबाबदारी विरघळवते.`
+        `${w} फक्त एक बॅज आहे.`,
+        `${w} जबाबदारी विरळ करते.`
       ]
     };
     case "te": return {
       long: [
-        `${w} హామీలను ఉబ్బబెట్టి సారాన్ని కరిగిస్తుంది.`,
-        `${w} బాధ్యతను మసకబార్చే చౌకైన ఓదార్పు.`,
+        `${w} హామీలను ఉబ్బబెట్టి సారాన్ని తగ్గిస్తుంది.`,
+        `${w} బాధ్యతను మసకబార్చే చవక ఓదార్పు.`,
         `${w} నిర్ణయాన్ని ఆలస్యం చేస్తుంది, ఖర్చు పెరుగుతుంది.`,
         `${w} ఆశ వేషం వేసుకున్న గడువు.`
       ],
       short: [
         `${w} ఒక సాకు.`,
-        `${w} అంతరాన్ని బయటపడుస్తుంది.`,
-        `${w} ఒక గుర్తు మాత్రమే.`,
+        `${w} అంతరాన్ని బయటపెడుతుంది.`,
+        `${w} కేవలం గుర్తు మాత్రమే.`,
         `${w} బాధ్యతను పలుచబరుస్తుంది.`
       ]
     };
     case "ta": return {
       long: [
-        `${w} வாக்குறுதியை ஊதி உள்ளடக்கத்தை களைத்துவிடுகிறது.`,
+        `${w} வாக்குறுதியை ஊதிவிட்டு உள்ளடக்கத்தை நீட்டுகிறது.`,
         `${w} பொறுப்பை மங்காக்கும் மலிவு ஆறுதல்.`,
-        `${w} தீர்மானத்தை தள்ளி, செலவைக் கூடுகிறது.`,
-        `${w} நம்பிக்கையைத் தோளில் சுமந்த கடைசி நேரம்.`
+        `${w} தீர்மானத்தை தள்ளி செலவை உயர்த்துகிறது.`,
+        `${w} நம்பிக்கையை உடைய இறுதி நேரம்.`
       ],
       short: [
         `${w} ஒரு காரணம்.`,
         `${w} இடைவெளியை வெளிப்படுத்துகிறது.`,
-        `${w} வெறும் குறியீடு.`,
+        `${w} வெறும் சின்னம்.`,
         `${w} பொறுப்பை கரைக்கிறது.`
       ]
     };
@@ -562,4 +565,15 @@ function templates(langTag, w) {
         ]
       };
   }
+}
+
+
+// ==============================
+// 共通レスポンス
+// ==============================
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json" }
+  });
 }
