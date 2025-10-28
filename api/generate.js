@@ -173,10 +173,10 @@ ${styleLine}
 
 function normalizeLangTag(tag) {
   const t = String(tag || "").replace('_','-').trim();
-  // 既知タグのみそのまま。未指定は ja
+  // 既知タグのみそのまま。未指定は en
   const known = new Set([
     "ja","en","zh-rCN","zh-rTW","es","fr","pt","de","ko",
-    "hi","id","tr","ru","bn","sw","mr","te","ta","vi"
+    "hi","id","tr","ru","bn","sw","ar","mr","te","ta","vi"
   ]);
   if (known.has(t)) return t;
   // 一般的な略記の正規化
