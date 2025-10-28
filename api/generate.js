@@ -3,13 +3,13 @@
 // ① アプリ指定の言語で必ず出力されるように、リクエストの言語タグを解釈してプロンプトに厳命
 // ② フォールバック(localFallback) も同じ言語で返すように拡張
 // ③ 出力文章は“必ず書き言葉（文語体・断定調）”になるよう指示文を強化
-// ④ モデルAPIを GPT-4o mini（OpenAI）に変更
+// ④ モデルAPIを XAI（Grok）に接続
 
 export const config = { runtime: "edge" };
 
-// ★ OpenAI（GPT-4o mini）用
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const OPENAI_MODEL   = process.env.OPENAI_MODEL || "gpt-4o-mini";
+// ★ XAI（Grok）用
+const XAI_API_KEY = process.env.XAI_API_KEY || "";
+const XAI_MODEL   = process.env.XAI_MODEL || "grok-4-fast-reasoning";
 
 export default async function handler(req) {
   try {
@@ -61,7 +61,7 @@ export default async function handler(req) {
       .replace(/[\[\(（]\s*(プリンター|スマイル|printer|smile)\s*[\]\)\）]/ig, "")
       .trim();
 
-    if (!OPENAI_API_KEY) {
+    if (!XAI_API_KEY) {
       return json(localFallback(word, lengthMode, styleMode, langTag));
     }
 
@@ -93,15 +93,15 @@ ${styleLine}
 - "type": 社会風刺/仕事風刺/恋愛風刺/テクノロジー風刺 など1語
 言葉: ${word}`;
 
-    // ★ OpenAI GPT-4o mini へ
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    // ★ XAI Grok へ
+    const r = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        "Authorization": `Bearer ${XAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
+        model: XAI_MODEL,
         messages: [
           { role: "system", content: systemMsg },
           { role: "user",   content: userMsg }
@@ -111,7 +111,7 @@ ${styleLine}
 
     if (!r.ok) {
       const text = await r.text();
-      return json({ ...localFallback(word, lengthMode, styleMode, langTag), error: `OpenAI ${r.status}: ${text}` });
+      return json({ ...localFallback(word, lengthMode, styleMode, langTag), error: `XAI ${r.status}: ${text}` });
     }
 
     const data = await r.json();
@@ -500,7 +500,7 @@ function templates(langTag, w) {
     };
     case "mr": return {
       long: [
-        `${w} अपेक्षा फुगवते आणि आशय क्षीण करते।`,
+        `${w} अपेक्षा फुगवते आणि आशय क्षीণ करते।`,
         `${w} जबाबदारी धूसर करणारा स्वस्त दिलासा आहे।`,
         `${w} निर्णय विलंबित होतो आणि खर्च वाढतो।`,
         `${w} आशेच्या आवरणातील अंतिम मुदत आहे।`
