@@ -105,7 +105,7 @@ export default async function handler(req) {
 
     const userMsg =
 `${langLine}
-次の「言葉」について、${lengthRule}の鋭く辛辣で、本質を突く風刺/皮肉を${langName}で作成すること。難解語は避け、**必ず書き言葉で出力すること**。喋り言葉・会話調・独白は禁止。
+次の「言葉」について、${lengthRule}の鋭く辛辣で、だが、意外性と納得感があり面白い風刺/皮肉を${langName}で作成すること。難解語は避け、**必ず書き言葉で出力すること**。喋り言葉・会話調・独白は禁止。
 ${styleLine}
 追加要件:
 - 固有名は一般語に言い換え（必要なときのみ）
