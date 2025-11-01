@@ -1,8 +1,21 @@
 {
   "name": "satireprinter-backend",
   "version": "1.0.0",
-  "type": "module",           
+  "type": "module",
   "scripts": {
-    "dev": "node server.js"  
-  }
+    "dev": "node server.js"
+  },
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YutoYamashita-dot/SatirePrinter-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/YutoYamashita-dot/SatirePrinter-backend/issues"
+  },
+  "homepage": "https://github.com/YutoYamashita-dot/SatirePrinter-backend#readme"
 }
