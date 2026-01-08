@@ -3,14 +3,15 @@
 // ① アプリ指定の言語で必ず出力されるように、リクエストの言語タグを解釈してプロンプトに厳命
 // ② フォールバック(localFallback) も同じ言語で返すように拡張 → 言語別フォールバックは廃止し、共通の簡易メッセージに変更
 // ③ 出力文章は“必ず書き言葉（文語体・断定調）”になるよう指示文を強化
-// ④ モデルAPIを XAI（Grok）に接続
+// ④ モデルAPIを Gemini (Flash Preview) に接続
 // ⑤ 追加：東京エッジ固定＆上流18秒タイムアウトで 25s 制限内に必ず初期レスポンスを返す
 
 export const config = { runtime: "edge", regions: ["hnd1"] };
 
-// ★ XAI（Grok）用
-const XAI_API_KEY = process.env.XAI_API_KEY || "";
-const XAI_MODEL   = process.env.XAI_MODEL || "grok-4-fast-reasoning";
+// ★ Gemini (Google) 用
+// 指定の "gemini 3 flash preview" に相当する現行最新のプレビュー版を設定
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_MODEL   = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
 
 // ★ 追加：上流保険タイムアウト（18s）
 const UPSTREAM_TIMEOUT_MS = 18_000;
@@ -83,7 +84,7 @@ export default async function handler(req) {
       .replace(/[\[\(（]\s*(プリンター|スマイル|printer|smile)\s*[\]\)\）]/ig, "")
       .trim();
 
-    if (!XAI_API_KEY) {
+    if (!GEMINI_API_KEY) {
       return json(localFallback(word, lengthMode, styleMode, langTag));
     }
 
@@ -105,7 +106,7 @@ export default async function handler(req) {
 
     const userMsg =
 `${langLine}
-次の「言葉」について、${lengthRule}の鋭く辛辣で、だが、意外性と納得感があり面白い風刺/皮肉を${langName}で作成すること。難解語は避け、**必ず書き言葉で出力すること**。喋り言葉・会話調・独白は禁止。
+次の「言葉」について、${lengthRule}の鋭く辛辣で本質的な風刺/皮肉を${langName}で作成すること。難解語は避け、**必ず書き言葉で出力すること**。喋り言葉・会話調・独白は禁止。
 ${styleLine}
 追加要件:
 - まず「候補A」として${lengthRule}の文章を1本作り、それを「60点」の出来だとみなす。
@@ -120,23 +121,24 @@ ${styleLine}
 - 差別的表現、個人攻撃、暴力や犯罪を扇動する内容は避け、少しヒヤヒヤしても現実には無害な範囲の風刺にとどめること。
 言葉: ${word}`;
 
-    // ★ XAI Grok へ —— 18秒の保険タイムアウトを付与
+    // ★ Gemini へ —— 18秒の保険タイムアウトを付与
+    // GoogleのOpenAI互換エンドポイントを使用
     let r;
     try {
       r = await callModelWithTimeout(
         {
-          model: XAI_MODEL,
+          model: GEMINI_MODEL,
           messages: [
             { role: "system", content: systemMsg },
             { role: "user",   content: userMsg }
           ],
-          // （オプション）初期応答を早めたい場合は max_output_tokens を控えめに
-          // max_output_tokens: 140
+          // （オプション）初期応答を早めたい場合は max_tokens を控えめに
+          // max_tokens: 140
         },
-        "https://api.x.ai/v1/chat/completions",
+        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${XAI_API_KEY}`
+          "Authorization": `Bearer ${GEMINI_API_KEY}`
         }
       );
     } catch (e) {
@@ -146,7 +148,7 @@ ${styleLine}
 
     if (!r.ok) {
       const text = await r.text();
-      return json({ ...localFallback(word, lengthMode, styleMode, langTag), error: `XAI ${r.status}: ${text}` });
+      return json({ ...localFallback(word, lengthMode, styleMode, langTag), error: `Gemini ${r.status}: ${text}` });
     }
 
     const data = await r.json();
